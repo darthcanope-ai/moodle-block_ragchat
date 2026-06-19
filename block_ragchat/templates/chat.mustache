@@ -1,0 +1,47 @@
+{{!
+    Template for the RAG chatbot block widget.
+
+    Context variables:
+      - blockid      : block instance ID (used as unique DOM anchor)
+      - incourse     : boolean — true when rendered inside a course
+      - placeholder  : localised input placeholder text
+      - send         : localised send button label
+      - ai_disclaimer: localised disclaimer text
+
+    @package   block_ragchat
+    @copyright 2026 Your Name <your@email.com>
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+<div id="block-ragchat-{{blockid}}" class="ragchat-widget" role="region" aria-label="{{#str}}pluginname, block_ragchat{{/str}}">
+
+    {{! Message history scrollable area }}
+    <div class="ragchat-messages" aria-live="polite" aria-relevant="additions">
+    </div>
+
+    {{! Input form }}
+    <form class="ragchat-form" novalidate>
+        <div class="ragchat-input-row">
+            <label for="ragchat-input-{{blockid}}" class="sr-only">
+                {{placeholder}}
+            </label>
+            <input
+                id="ragchat-input-{{blockid}}"
+                class="ragchat-input form-control"
+                type="text"
+                placeholder="{{placeholder}}"
+                maxlength="1000"
+                autocomplete="off"
+                aria-label="{{placeholder}}"
+            >
+            <button type="submit" class="ragchat-send btn btn-primary">
+                {{send}}
+            </button>
+        </div>
+    </form>
+
+    {{! Static AI disclaimer (also repeated per answer bubble via JS) }}
+    <p class="ragchat-disclaimer-static text-muted small mt-1">
+        {{ai_disclaimer}}
+    </p>
+
+</div>
