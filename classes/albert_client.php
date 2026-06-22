@@ -343,10 +343,18 @@ class albert_client {
     private function assert_success(\Psr\Http\Message\ResponseInterface $response): void {
         $status = $response->getStatusCode();
         if ($status >= 400) {
-            $body = $response->getBody()->getContents();
-            $obj  = json_decode($body);
-            $msg  = $obj?->detail ?? $obj?->error?->message ?? "HTTP {$status}: {$body}";
-            throw new \RuntimeException($msg, $status);
+            $body   = $response->getBody()->getContents();
+            $obj    = json_decode($body);
+            $detail = $obj?->detail ?? $obj?->error?->message ?? null;
+            // FastAPI returns detail as an array for validation errors.
+            if (is_array($detail)) {
+                $detail = implode(' | ', array_map(
+                    fn($d) => (is_object($d) ? ($d->msg ?? json_encode($d)) : (string) $d),
+                    $detail,
+                ));
+            }
+            $msg = $detail ?? "HTTP {$status}: {$body}";
+            throw new \RuntimeException((string) $msg, $status);
         }
     }
 }
