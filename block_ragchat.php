@@ -79,7 +79,7 @@ class block_ragchat extends block_base {
      * @return stdClass|null
      */
     public function get_content(): ?stdClass {
-        global $USER, $COURSE, $PAGE;
+        global $USER, $COURSE, $PAGE, $OUTPUT;
 
         if ($this->content !== null) {
             return $this->content;
@@ -127,10 +127,7 @@ class block_ragchat extends block_base {
             'ai_disclaimer'=> get_string('ai_disclaimer', 'block_ragchat'),
         ];
 
-        $this->content->text = $PAGE->get_renderer('block_ragchat')->render_from_template(
-            'block_ragchat/chat',
-            $data,
-        );
+        $this->content->text = $OUTPUT->render_from_template('block_ragchat/chat', $data);
 
         return $this->content;
     }
