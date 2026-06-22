@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_ragchat';
-$plugin->version   = 2026062200; // Ne pas incrémenter — utiliser release pour les patchs.
+$plugin->version   = 2026062204; // Ne pas incrémenter — utiliser release pour les patchs.
 $plugin->requires  = 2025041400; // Moodle 5.0.
 $plugin->supported = [500, 502];
 $plugin->maturity  = MATURITY_ALPHA;
