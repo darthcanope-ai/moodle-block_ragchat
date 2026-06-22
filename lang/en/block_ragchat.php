@@ -36,6 +36,9 @@ $string['sources']           = 'Sources';
 $string['no_results']        = 'No relevant courses were found for your question. Try rephrasing it.';
 $string['unknown_source']      = 'Unknown source';
 $string['chat_user_question']  = 'Question:';
+$string['norag_disclaimer']    = 'No course index available yet — answering without course context.';
+
+$string['systemprompt_norag']  = 'You are a helpful assistant on a learning platform. The course catalogue is not yet indexed. Answer the user\'s question as best you can based on your general knowledge. Be honest if you don\'t know.';
 
 // Errors.
 $string['error_generic']      = 'An error occurred. Please try again later.';

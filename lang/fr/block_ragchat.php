@@ -36,6 +36,9 @@ $string['sources']           = 'Sources';
 $string['no_results']        = 'Aucun cours correspondant à votre question n\'a été trouvé. Essayez de reformuler.';
 $string['unknown_source']      = 'Source inconnue';
 $string['chat_user_question']  = 'Question :';
+$string['norag_disclaimer']    = 'Catalogue non encore indexé — réponse sans contexte de cours.';
+
+$string['systemprompt_norag']  = 'Tu es un assistant sur une plateforme de formation. Le catalogue des cours n\'est pas encore indexé. Réponds à la question de l\'utilisateur du mieux que tu peux avec tes connaissances générales. Sois honnête si tu ne sais pas.';
 
 // Erreurs.
 $string['error_generic']       = 'Une erreur est survenue. Veuillez réessayer ultérieurement.';

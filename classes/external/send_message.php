@@ -97,32 +97,36 @@ class send_message extends external_api {
             return self::error_response(get_string('provider_not_configured', 'block_ragchat'));
         }
 
-        try {
-            // Step 1 — Semantic search.
-            $chunks = $client->search($question, $collectionid);
+        // Try the full RAG pipeline. If the collection is not yet indexed,
+        // fall back to a direct LLM answer without retrieved context.
+        $ragavailable = true;
+        $chunks       = [];
 
-            if (empty($chunks)) {
-                return [
-                    'success'  => true,
-                    'answer'   => get_string('no_results', 'block_ragchat'),
-                    'sources'  => [],
-                    'error'    => '',
-                ];
+        try {
+            $chunks = $client->search($question, $collectionid);
+        } catch (\RuntimeException $e) {
+            // Collection not found = cron has not run yet.
+            $ragavailable = false;
+        }
+
+        try {
+            if ($ragavailable && !empty($chunks)) {
+                // Full RAG pipeline.
+                $reranked     = $client->rerank($question, $chunks);
+                $systemprompt = self::build_system_prompt($reranked, $collectionid, $courseid);
+                $answer       = self::generate_answer($systemprompt, $question, $context->id, $USER->id);
+                $sources      = self::format_sources($reranked);
+            } elseif ($ragavailable && empty($chunks)) {
+                // Collection exists but no results found.
+                $answer  = get_string('no_results', 'block_ragchat');
+                $sources = [];
+            } else {
+                // No collection yet — answer without RAG context.
+                $systemprompt = get_string('systemprompt_norag', 'block_ragchat');
+                $answer       = self::generate_answer($systemprompt, $question, $context->id, $USER->id);
+                $sources      = [];
             }
 
-            // Step 2 — Rerank.
-            $reranked = $client->rerank($question, $chunks);
-
-            // Step 3 — Build system prompt with context.
-            $systemprompt = self::build_system_prompt($reranked, $collectionid, $courseid);
-
-            // Step 4 — Generate answer via the Moodle AI subsystem.
-            $answer = self::generate_answer($systemprompt, $question, $context->id, $USER->id);
-
-            // Step 5 — Format sources for display.
-            $sources = self::format_sources($reranked);
-
-            // Log the interaction.
             self::log_interaction($USER->id, $courseid, $collectionid, $question, $answer);
 
             return [
@@ -130,6 +134,7 @@ class send_message extends external_api {
                 'answer'  => $answer,
                 'sources' => $sources,
                 'error'   => '',
+                'norag'   => !$ragavailable,
             ];
 
         } catch (\Throwable $e) {
@@ -158,6 +163,7 @@ class send_message extends external_api {
                 [],
             ),
             'error' => new external_value(PARAM_TEXT, 'Error message when success=false', VALUE_DEFAULT, ''),
+            'norag' => new external_value(PARAM_BOOL, 'True when answered without RAG context (collection not yet indexed)', VALUE_DEFAULT, false),
         ]);
     }
 

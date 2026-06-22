@@ -113,8 +113,9 @@ class block_ragchat extends block_base {
                 'send'          => get_string('chat_send', 'block_ragchat'),
                 'thinking'      => get_string('chat_thinking', 'block_ragchat'),
                 'error_generic' => get_string('error_generic', 'block_ragchat'),
-                'ai_disclaimer' => get_string('ai_disclaimer', 'block_ragchat'),
-                'sources'       => get_string('sources', 'block_ragchat'),
+                'ai_disclaimer'  => get_string('ai_disclaimer', 'block_ragchat'),
+                'sources'        => get_string('sources', 'block_ragchat'),
+                'norag_disclaimer' => get_string('norag_disclaimer', 'block_ragchat'),
             ],
         ]]);
 
