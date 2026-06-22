@@ -240,14 +240,21 @@ class albert_client {
     private function resolve_from_ai_subsystem(): void {
         try {
             $manager   = \core\di::get(\core_ai\manager::class);
-            $providers = $manager->get_providers_for_action(
-                \core_ai\aiactions\generate_text::class,
+
+            // get_providers_for_actions() takes an array and returns [actionclass => [providers]].
+            $map = $manager->get_providers_for_actions(
+                [\core_ai\aiactions\generate_text::class],
                 true,
             );
+            $providers = $map[\core_ai\aiactions\generate_text::class] ?? [];
 
             foreach ($providers as $provider) {
-                // Moodle 5: config is populated from the saved provider form.
+                // In Moodle 5, $provider->config is populated from the saved form
+                // and may be an array or object depending on storage.
                 $config = $provider->config ?? [];
+                if (is_object($config)) {
+                    $config = (array) $config;
+                }
 
                 if (!empty($config['apikey'])) {
                     $this->apikey = $config['apikey'];
@@ -257,7 +264,7 @@ class albert_client {
                     return;
                 }
 
-                // Providers may also expose dedicated accessors.
+                // Some providers expose dedicated accessors.
                 if (method_exists($provider, 'get_api_key')) {
                     $key = $provider->get_api_key();
                     if (!empty($key)) {
