@@ -17,9 +17,10 @@
 /**
  * HTTP client for Albert API RAG endpoints.
  *
- * Reads credentials from the aiprovider_albertapi configuration so this block
- * is not tied to a specific API key — it reuses whatever the admin configured
- * in the Moodle AI subsystem.
+ * Credentials are resolved in this order:
+ *  1. AI subsystem — iterates providers configured for generate_text,
+ *     reads apikey / apiendpoint from $provider->config (Moodle 5 pattern).
+ *  2. Block-level fallback settings (block admin settings page).
  *
  * @package    block_ragchat
  * @copyright  2026 Your Name <your@email.com>
@@ -34,7 +35,7 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\RequestOptions;
 
 /**
- * Wraps the four Albert API RAG endpoints.
+ * Wraps the Albert API RAG endpoints (search, rerank, collections, files).
  */
 class albert_client {
 
@@ -44,10 +45,13 @@ class albert_client {
     /** Reranker model used by Albert. */
     const RERANKER_MODEL = 'BAAI/bge-reranker-v2-m3';
 
+    /** Default Albert API base URL. */
+    const DEFAULT_ENDPOINT = 'https://albert.api.etalab.gouv.fr';
+
     /** Number of chunks retrieved from /v1/search before reranking. */
     const SEARCH_TOP_K = 10;
 
-    /** Number of chunks kept after /v1/rerank for context injection. */
+    /** Number of chunks kept after /v1/rerank. */
     const RERANK_TOP_N = 4;
 
     /** @var string Albert API base URL (no trailing slash). */
@@ -57,21 +61,28 @@ class albert_client {
     private string $apikey;
 
     /**
-     * Constructor — reads config from aiprovider_albertapi.
-     *
-     * Falls back to block-level settings if the provider plugin is absent
-     * (e.g. when using a different AI provider for completions).
+     * Constructor — resolves credentials from the Moodle AI subsystem,
+     * with fallback to block-level admin settings.
      */
     public function __construct() {
-        $this->apikey   = (string) (get_config('aiprovider_albertapi', 'apikey')       ?: get_config('block_ragchat', 'apikey') ?: '');
-        $this->endpoint = rtrim(
-            (string) (get_config('aiprovider_albertapi', 'apiendpoint') ?: get_config('block_ragchat', 'apiendpoint') ?: 'https://albert.api.etalab.gouv.fr'),
-            '/',
-        );
+        $this->endpoint = self::DEFAULT_ENDPOINT;
+        $this->apikey   = '';
+
+        // Priority 1: AI subsystem configured provider.
+        $this->resolve_from_ai_subsystem();
+
+        // Priority 2: block-level settings fallback.
+        if (empty($this->apikey)) {
+            $this->apikey = (string) (get_config('block_ragchat', 'apikey') ?: '');
+        }
+        $blockep = get_config('block_ragchat', 'apiendpoint');
+        if (!empty($blockep) && $this->endpoint === self::DEFAULT_ENDPOINT) {
+            $this->endpoint = rtrim($blockep, '/');
+        }
     }
 
     /**
-     * Returns true when credentials are available.
+     * Returns true when an API key is available.
      *
      * @return bool
      */
@@ -80,37 +91,19 @@ class albert_client {
     }
 
     // -------------------------------------------------------------------------
-    // Public RAG pipeline methods
+    // RAG pipeline
     // -------------------------------------------------------------------------
 
     /**
-     * Step 1 — Vectorise a query string.
+     * Retrieve relevant chunks from an Albert collection.
      *
-     * POST /v1/embeddings
+     * POST /v1/search  (Albert handles vectorisation server-side)
      *
      * @param  string $query
-     * @return float[]  Embedding vector.
-     * @throws \moodle_exception on API error.
-     */
-    public function get_embedding(string $query): array {
-        $body = $this->post('/v1/embeddings', [
-            'input' => $query,
-            'model' => self::EMBEDDING_MODEL,
-        ]);
-
-        return $body->data[0]->embedding ?? [];
-    }
-
-    /**
-     * Step 2 — Retrieve relevant chunks from an Albert collection.
-     *
-     * POST /v1/search
-     *
-     * @param  string  $query        User question.
-     * @param  string  $collectionid Albert collection name (e.g. 'catalogue_moodle').
-     * @param  int     $topk         Number of results to retrieve.
-     * @return array   Array of chunk objects {score, chunk: {content, metadata}}.
-     * @throws \moodle_exception on API error.
+     * @param  string $collectionid
+     * @param  int    $topk
+     * @return array
+     * @throws \moodle_exception
      */
     public function search(string $query, string $collectionid, int $topk = self::SEARCH_TOP_K): array {
         $body = $this->post('/v1/search', [
@@ -118,20 +111,19 @@ class albert_client {
             'query'       => $query,
             'k'           => $topk,
         ]);
-
         return $body->data ?? [];
     }
 
     /**
-     * Step 3 — Rerank the retrieved chunks by relevance.
+     * Rerank retrieved chunks by relevance.
      *
      * POST /v1/rerank
      *
-     * @param  string $query   User question.
-     * @param  array  $chunks  Chunks returned by search() (objects with ->chunk->content).
-     * @param  int    $topn    Number of top chunks to keep.
-     * @return array  Reranked subset of chunks.
-     * @throws \moodle_exception on API error.
+     * @param  string $query
+     * @param  array  $chunks
+     * @param  int    $topn
+     * @return array
+     * @throws \moodle_exception
      */
     public function rerank(string $query, array $chunks, int $topn = self::RERANK_TOP_N): array {
         if (empty($chunks)) {
@@ -147,82 +139,40 @@ class albert_client {
             'top_n'     => $topn,
         ]);
 
-        // results: [{index: int, relevance_score: float}]
-        $results = $body->results ?? [];
         $reranked = [];
-        foreach ($results as $r) {
+        foreach ($body->results ?? [] as $r) {
             if (isset($chunks[$r->index])) {
                 $chunk = $chunks[$r->index];
                 $chunk->rerank_score = $r->relevance_score;
                 $reranked[] = $chunk;
             }
         }
-
         return $reranked;
     }
 
-    /**
-     * Step 4 — Generate an answer using the LLM with injected context.
-     *
-     * POST /v1/chat/completions
-     *
-     * @param  string $systemprompt System prompt with injected chunks.
-     * @param  string $question     User question.
-     * @param  string $model        LLM model identifier.
-     * @return string Generated answer.
-     * @throws \moodle_exception on API error.
-     */
-    public function chat(string $systemprompt, string $question, string $model = ''): string {
-        if ($model === '') {
-            $model = (string) (get_config('aiprovider_albertapi', 'action_generate_text_model') ?: 'AgentPublic/llama3-instruct-8b');
-        }
-
-        $body = $this->post('/v1/chat/completions', [
-            'model'    => $model,
-            'messages' => [
-                ['role' => 'system', 'content' => $systemprompt],
-                ['role' => 'user',   'content' => $question],
-            ],
-            'stream'     => false,
-            'max_tokens' => 1024,
-        ]);
-
-        return $body->choices[0]->message->content ?? '';
-    }
-
     // -------------------------------------------------------------------------
-    // Collection management (used by cron task)
+    // Collection management (cron task)
     // -------------------------------------------------------------------------
 
     /**
-     * List existing collections.
-     *
-     * GET /v1/collections
-     *
      * @return array
      */
     public function list_collections(): array {
-        $body = $this->get('/v1/collections');
-        return $body->data ?? [];
+        return $this->get('/v1/collections')->data ?? [];
     }
 
     /**
-     * Create a collection if it does not exist.
-     *
-     * POST /v1/collections
-     *
      * @param  string $name
-     * @return \stdClass API response body.
+     * @return \stdClass
      */
     public function create_collection(string $name): \stdClass {
-        return $this->post('/v1/collections', ['name' => $name, 'model' => self::EMBEDDING_MODEL]);
+        return $this->post('/v1/collections', [
+            'name'  => $name,
+            'model' => self::EMBEDDING_MODEL,
+        ]);
     }
 
     /**
-     * Delete all documents in a collection (full reset before re-indexing).
-     *
-     * DELETE /v1/collections/{name}/documents
-     *
      * @param  string $name
      * @return void
      */
@@ -231,18 +181,15 @@ class albert_client {
     }
 
     /**
-     * Upload a file to Albert Files API.
-     *
-     * POST /v1/files  (multipart/form-data)
+     * Upload a file via multipart/form-data.
      *
      * @param  string $filename
-     * @param  string $content  Raw file content.
-     * @param  string $purpose  Albert file purpose (default: 'assistants').
-     * @return string File ID returned by Albert.
+     * @param  string $content
+     * @param  string $purpose
+     * @return string Albert file ID.
      */
     public function upload_file(string $filename, string $content, string $purpose = 'assistants'): string {
-        $client = \core\di::get(http_client::class);
-
+        $client  = \core\di::get(http_client::class);
         $request = new Request(
             'POST',
             $this->endpoint . '/v1/files',
@@ -252,8 +199,8 @@ class albert_client {
         try {
             $response = $client->send($request, [
                 RequestOptions::MULTIPART => [
-                    ['name' => 'purpose', 'contents' => $purpose],
-                    ['name' => 'file', 'contents' => $content, 'filename' => $filename],
+                    ['name' => 'purpose',  'contents' => $purpose],
+                    ['name' => 'file',     'contents' => $content, 'filename' => $filename],
                 ],
                 RequestOptions::HTTP_ERRORS => false,
             ]);
@@ -267,12 +214,10 @@ class albert_client {
     }
 
     /**
-     * Index a previously uploaded file into a collection.
+     * Index an uploaded file into a collection.
      *
-     * POST /v1/documents
-     *
-     * @param  string $fileid       Albert file ID.
-     * @param  string $collectionid Albert collection name.
+     * @param  string $fileid
+     * @param  string $collectionid
      * @return \stdClass
      */
     public function index_document(string $fileid, string $collectionid): \stdClass {
@@ -283,17 +228,52 @@ class albert_client {
     }
 
     // -------------------------------------------------------------------------
-    // Private HTTP helpers
+    // Private helpers
     // -------------------------------------------------------------------------
 
     /**
-     * Perform a JSON POST request.
+     * Resolve API credentials from the Moodle AI subsystem.
      *
-     * @param  string $path    API path (e.g. '/v1/search').
-     * @param  array  $payload Request body.
-     * @return \stdClass Decoded response body.
-     * @throws \moodle_exception
+     * Iterates providers configured for generate_text and reads apikey /
+     * apiendpoint from $provider->config (Moodle 5 hook-based config).
      */
+    private function resolve_from_ai_subsystem(): void {
+        try {
+            $manager   = \core\di::get(\core_ai\manager::class);
+            $providers = $manager->get_providers_for_action(
+                \core_ai\aiactions\generate_text::class,
+                true,
+            );
+
+            foreach ($providers as $provider) {
+                // Moodle 5: config is populated from the saved provider form.
+                $config = $provider->config ?? [];
+
+                if (!empty($config['apikey'])) {
+                    $this->apikey = $config['apikey'];
+                    if (!empty($config['apiendpoint'])) {
+                        $this->endpoint = rtrim($config['apiendpoint'], '/');
+                    }
+                    return;
+                }
+
+                // Providers may also expose dedicated accessors.
+                if (method_exists($provider, 'get_api_key')) {
+                    $key = $provider->get_api_key();
+                    if (!empty($key)) {
+                        $this->apikey = $key;
+                        if (method_exists($provider, 'get_api_endpoint')) {
+                            $this->endpoint = rtrim($provider->get_api_endpoint(), '/');
+                        }
+                        return;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            debugging('block_ragchat: could not resolve AI provider credentials: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
     private function post(string $path, array $payload): \stdClass {
         $client  = \core\di::get(http_client::class);
         $request = new Request(
@@ -316,13 +296,6 @@ class albert_client {
         return json_decode($response->getBody()->getContents());
     }
 
-    /**
-     * Perform a JSON GET request.
-     *
-     * @param  string $path
-     * @return \stdClass
-     * @throws \moodle_exception
-     */
     private function get(string $path): \stdClass {
         $client  = \core\di::get(http_client::class);
         $request = new Request(
@@ -341,13 +314,6 @@ class albert_client {
         return json_decode($response->getBody()->getContents());
     }
 
-    /**
-     * Perform a DELETE request.
-     *
-     * @param  string $path
-     * @return void
-     * @throws \moodle_exception
-     */
     private function delete(string $path): void {
         $client  = \core\di::get(http_client::class);
         $request = new Request(
@@ -362,19 +328,11 @@ class albert_client {
             throw new \moodle_exception('error_api', 'block_ragchat', '', $e->getMessage());
         }
 
-        // 204 No Content is acceptable for DELETE.
         if ($response->getStatusCode() >= 400) {
             $this->assert_success($response);
         }
     }
 
-    /**
-     * Throw a moodle_exception if the response indicates an error.
-     *
-     * @param  \Psr\Http\Message\ResponseInterface $response
-     * @return void
-     * @throws \moodle_exception
-     */
     private function assert_success(\Psr\Http\Message\ResponseInterface $response): void {
         $status = $response->getStatusCode();
         if ($status >= 400) {

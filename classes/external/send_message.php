@@ -116,8 +116,8 @@ class send_message extends external_api {
             // Step 3 — Build system prompt with context.
             $systemprompt = self::build_system_prompt($reranked, $collectionid, $courseid);
 
-            // Step 4 — Generate answer.
-            $answer = $client->chat($systemprompt, $question);
+            // Step 4 — Generate answer via the Moodle AI subsystem.
+            $answer = self::generate_answer($systemprompt, $question, $context->id, $USER->id);
 
             // Step 5 — Format sources for display.
             $sources = self::format_sources($reranked);
@@ -164,6 +164,48 @@ class send_message extends external_api {
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Generate an answer via the Moodle AI subsystem (generate_text action).
+     *
+     * The system prompt and question are combined into a single prompttext
+     * because the standard generate_text action does not expose a separate
+     * system prompt field. The full RAG context is thus passed as user prompt.
+     *
+     * @param  string $systemprompt
+     * @param  string $question
+     * @param  int    $contextid
+     * @param  int    $userid
+     * @return string Generated answer text.
+     * @throws \moodle_exception
+     */
+    private static function generate_answer(
+        string $systemprompt,
+        string $question,
+        int $contextid,
+        int $userid,
+    ): string {
+        $manager = \core\di::get(\core_ai\manager::class);
+
+        $action = new \core_ai\aiactions\generate_text(
+            contextid:  $contextid,
+            userid:     $userid,
+            prompttext: $systemprompt . "\n\n" . get_string('chat_user_question', 'block_ragchat') . ' ' . $question,
+        );
+
+        $response = $manager->process_action($action);
+
+        if (!$response->get_success()) {
+            throw new \moodle_exception(
+                'error_api',
+                'block_ragchat',
+                '',
+                $response->get_errormessage() ?? get_string('error_generic', 'block_ragchat'),
+            );
+        }
+
+        return $response->get_generatedcontent() ?? '';
+    }
 
     /**
      * Build the system prompt for the LLM with injected context chunks.

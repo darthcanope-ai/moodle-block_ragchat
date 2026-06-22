@@ -34,7 +34,8 @@ $string['chat_thinking']     = 'Réflexion en cours…';
 $string['ai_disclaimer']     = 'Réponse générée par IA — vérifiez toujours les sources.';
 $string['sources']           = 'Sources';
 $string['no_results']        = 'Aucun cours correspondant à votre question n\'a été trouvé. Essayez de reformuler.';
-$string['unknown_source']    = 'Source inconnue';
+$string['unknown_source']      = 'Source inconnue';
+$string['chat_user_question']  = 'Question :';
 
 // Erreurs.
 $string['error_generic']       = 'Une erreur est survenue. Veuillez réessayer ultérieurement.';
