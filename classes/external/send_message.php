@@ -132,7 +132,7 @@ class send_message extends external_api {
                 'error'   => '',
             ];
 
-        } catch (\moodle_exception $e) {
+        } catch (\Throwable $e) {
             return self::error_response($e->getMessage());
         }
     }

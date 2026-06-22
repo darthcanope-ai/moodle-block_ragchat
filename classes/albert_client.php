@@ -205,7 +205,7 @@ class albert_client {
                 RequestOptions::HTTP_ERRORS => false,
             ]);
         } catch (RequestException $e) {
-            throw new \moodle_exception('error_api', 'block_ragchat', '', $e->getMessage());
+            throw new \RuntimeException($e->getMessage(), $e->getCode(), $e);
         }
 
         $this->assert_success($response);
@@ -296,7 +296,7 @@ class albert_client {
         try {
             $response = $client->send($request, [RequestOptions::HTTP_ERRORS => false]);
         } catch (RequestException $e) {
-            throw new \moodle_exception('error_api', 'block_ragchat', '', $e->getMessage());
+            throw new \RuntimeException($e->getMessage(), $e->getCode(), $e);
         }
 
         $this->assert_success($response);
@@ -314,7 +314,7 @@ class albert_client {
         try {
             $response = $client->send($request, [RequestOptions::HTTP_ERRORS => false]);
         } catch (RequestException $e) {
-            throw new \moodle_exception('error_api', 'block_ragchat', '', $e->getMessage());
+            throw new \RuntimeException($e->getMessage(), $e->getCode(), $e);
         }
 
         $this->assert_success($response);
@@ -332,7 +332,7 @@ class albert_client {
         try {
             $response = $client->send($request, [RequestOptions::HTTP_ERRORS => false]);
         } catch (RequestException $e) {
-            throw new \moodle_exception('error_api', 'block_ragchat', '', $e->getMessage());
+            throw new \RuntimeException($e->getMessage(), $e->getCode(), $e);
         }
 
         if ($response->getStatusCode() >= 400) {
@@ -346,7 +346,7 @@ class albert_client {
             $body = $response->getBody()->getContents();
             $obj  = json_decode($body);
             $msg  = $obj?->detail ?? $obj?->error?->message ?? "HTTP {$status}: {$body}";
-            throw new \moodle_exception('error_api', 'block_ragchat', '', $msg);
+            throw new \RuntimeException($msg, $status);
         }
     }
 }
