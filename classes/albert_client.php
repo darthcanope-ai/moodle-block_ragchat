@@ -105,13 +105,31 @@ class albert_client {
      * @return array
      * @throws \moodle_exception
      */
-    public function search(string $query, string $collectionid, int $topk = self::SEARCH_TOP_K): array {
+    public function search(string $query, string $collectionname, int $topk = self::SEARCH_TOP_K): array {
+        $id   = $this->resolve_collection_id($collectionname);
         $body = $this->post('/v1/search', [
-            'collections' => [$collectionid],
+            'collections' => [$id],
             'query'       => $query,
             'k'           => $topk,
         ]);
         return $body->data ?? [];
+    }
+
+    /**
+     * Resolve a collection name to its integer ID.
+     *
+     * @param  string $name
+     * @return int
+     * @throws \RuntimeException if the collection is not found.
+     */
+    public function resolve_collection_id(string $name): int {
+        $collections = $this->list_collections();
+        foreach ($collections as $col) {
+            if (($col->name ?? '') === $name) {
+                return (int) $col->id;
+            }
+        }
+        throw new \RuntimeException("Collection '{$name}' not found in Albert API. Run the catalogue sync task first.");
     }
 
     /**
