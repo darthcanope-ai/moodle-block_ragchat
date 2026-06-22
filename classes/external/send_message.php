@@ -202,15 +202,12 @@ class send_message extends external_api {
         $response = $manager->process_action($action);
 
         if (!$response->get_success()) {
-            throw new \moodle_exception(
-                'error_api',
-                'block_ragchat',
-                '',
-                $response->get_errormessage() ?? get_string('error_generic', 'block_ragchat'),
+            throw new \RuntimeException(
+                $response->get_errormessage() ?: get_string('error_generic', 'block_ragchat'),
             );
         }
 
-        return $response->get_generatedcontent() ?? '';
+        return $response->get_response_data()['generatedcontent'] ?? '';
     }
 
     /**
