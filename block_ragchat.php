@@ -100,13 +100,6 @@ class block_ragchat extends block_base {
             ? 'course_' . $COURSE->id
             : 'catalogue_moodle';
 
-        // Check the Moodle AI subsystem has a configured provider.
-        $manager = \core_ai\manager::get_instance();
-        if (!$manager->is_action_available(\core_ai\aiactions\generate_text::class)) {
-            $this->content->text = get_string('provider_not_configured', 'block_ragchat');
-            return $this->content;
-        }
-
         // Pass parameters to JS.
         $PAGE->requires->js_call_amd('block_ragchat/chat', 'init', [[
             'blockid'      => $this->instance->id,
