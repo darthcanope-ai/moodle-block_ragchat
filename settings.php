@@ -74,6 +74,43 @@ if ($ADMIN->fulltree) {
         [2 => '2', 3 => '3', 4 => '4', 5 => '5'],
     ));
 
+    // Default system prompts (global fallback, overridable per block instance).
+    $settings->add(new admin_setting_heading(
+        'block_ragchat/prompts_heading',
+        get_string('settings_prompts_heading', 'block_ragchat'),
+        get_string('settings_prompts_heading_desc', 'block_ragchat'),
+    ));
+
+    $settings->add(new admin_setting_configtextarea(
+        'block_ragchat/systemprompt_catalogue',
+        get_string('settings_systemprompt_catalogue', 'block_ragchat'),
+        get_string('settings_systemprompt_catalogue_desc', 'block_ragchat'),
+        '', // Empty = use lang string default.
+        PARAM_RAW,
+        '80',
+        '8',
+    ));
+
+    $settings->add(new admin_setting_configtextarea(
+        'block_ragchat/systemprompt_course',
+        get_string('settings_systemprompt_course', 'block_ragchat'),
+        get_string('settings_systemprompt_course_desc', 'block_ragchat'),
+        '',
+        PARAM_RAW,
+        '80',
+        '8',
+    ));
+
+    $settings->add(new admin_setting_configtextarea(
+        'block_ragchat/systemprompt_norag',
+        get_string('settings_systemprompt_norag', 'block_ragchat'),
+        get_string('settings_systemprompt_norag_desc', 'block_ragchat'),
+        '',
+        PARAM_RAW,
+        '80',
+        '5',
+    ));
+
     // Last catalogue sync (read-only info).
     $lastsync = get_config('block_ragchat', 'catalogue_last_sync');
     $lastsyncstr = $lastsync

@@ -65,6 +65,24 @@ Cite toujours le document source de ta réponse.
 Documents disponibles :
 {chunks}";
 
+// Paramètres — prompts par défaut.
+$string['settings_prompts_heading']              = 'Prompts système par défaut';
+$string['settings_prompts_heading_desc']         = 'Ces prompts s\'appliquent à tout le site sauf s\'ils sont surchargés sur une instance du bloc. Laisser vide pour utiliser le prompt intégré.';
+$string['settings_systemprompt_catalogue']       = 'Prompt chatbot catalogue';
+$string['settings_systemprompt_catalogue_desc']  = 'Prompt système utilisé en page d\'accueil / catalogue. Utiliser {chunks} pour le contexte des cours.';
+$string['settings_systemprompt_course']          = 'Prompt chatbot cours';
+$string['settings_systemprompt_course_desc']     = 'Prompt système utilisé dans un cours. Utiliser {chunks} pour les documents et {coursename} pour le nom du cours.';
+$string['settings_systemprompt_norag']           = 'Prompt sans RAG';
+$string['settings_systemprompt_norag_desc']      = 'Prompt utilisé quand la collection n\'a pas encore été indexée (cron non exécuté).';
+
+// Formulaire d'édition de l'instance.
+$string['editform_header']           = 'Configuration du chatbot';
+$string['editform_title']            = 'Titre du bloc';
+$string['editform_prompt_header']    = 'Prompt système (surcharge le paramètre global)';
+$string['editform_systemprompt']     = 'Prompt personnalisé';
+$string['editform_systemprompt_help'] = 'Laisser vide pour utiliser le prompt global ou le prompt intégré. Utiliser {chunks} pour le contexte et {coursename} pour le nom du cours.';
+$string['editform_systemprompt_hint'] = 'Variables disponibles : <code>{chunks}</code> (contexte récupéré), <code>{coursename}</code> (nom du cours, mode cours uniquement).';
+
 // Paramètres.
 $string['settings_apikey']              = 'Clé API Albert (secours)';
 $string['settings_apikey_desc']         = 'Utilisée uniquement si le plugin aiprovider_albertapi n\'est pas installé.';

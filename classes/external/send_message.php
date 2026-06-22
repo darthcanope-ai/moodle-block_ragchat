@@ -58,6 +58,7 @@ class send_message extends external_api {
             'question'     => new external_value(PARAM_TEXT, 'User question'),
             'collectionid' => new external_value(PARAM_ALPHANUMEXT, 'Albert collection identifier'),
             'courseid'     => new external_value(PARAM_INT, 'Moodle course ID (1 = site)', VALUE_DEFAULT, 1),
+            'instanceid'   => new external_value(PARAM_INT, 'Block instance ID (for per-instance prompt)', VALUE_DEFAULT, 0),
         ]);
     }
 
@@ -69,7 +70,7 @@ class send_message extends external_api {
      * @param  int    $courseid
      * @return array
      */
-    public static function execute(string $question, string $collectionid, int $courseid = 1): array {
+    public static function execute(string $question, string $collectionid, int $courseid = 1, int $instanceid = 0): array {
         global $USER;
 
         // Validate and clean parameters.
@@ -77,7 +78,8 @@ class send_message extends external_api {
             'question'     => $question,
             'collectionid' => $collectionid,
             'courseid'     => $courseid,
-        ] = self::validate_parameters(self::execute_parameters(), compact('question', 'collectionid', 'courseid'));
+            'instanceid'   => $instanceid,
+        ] = self::validate_parameters(self::execute_parameters(), compact('question', 'collectionid', 'courseid', 'instanceid'));
 
         // Capability check.
         $context = $courseid > 1
@@ -113,7 +115,7 @@ class send_message extends external_api {
             if ($ragavailable && !empty($chunks)) {
                 // Full RAG pipeline.
                 $reranked     = $client->rerank($question, $chunks);
-                $systemprompt = self::build_system_prompt($reranked, $collectionid, $courseid);
+                $systemprompt = self::build_system_prompt($reranked, $collectionid, $courseid, $instanceid);
                 $answer       = self::generate_answer($systemprompt, $question, $context->id, $USER->id);
                 $sources      = self::format_sources($reranked);
             } elseif ($ragavailable && empty($chunks)) {
@@ -122,7 +124,7 @@ class send_message extends external_api {
                 $sources = [];
             } else {
                 // No collection yet — answer without RAG context.
-                $systemprompt = get_string('systemprompt_norag', 'block_ragchat');
+                $systemprompt = self::resolve_prompt_template($instanceid, 'norag');
                 $answer       = self::generate_answer($systemprompt, $question, $context->id, $USER->id);
                 $sources      = [];
             }
@@ -218,8 +220,41 @@ class send_message extends external_api {
      * @param  int    $courseid
      * @return string
      */
-    private static function build_system_prompt(array $chunks, string $collectionid, int $courseid): string {
+    /**
+     * Resolve system prompt template: instance config → global admin → lang string.
+     *
+     * @param  int    $instanceid  Block instance ID (0 = no instance).
+     * @param  string $type        'catalogue', 'course', or 'norag'.
+     * @return string              Prompt template (may contain {chunks}, {coursename} placeholders).
+     */
+    private static function resolve_prompt_template(int $instanceid, string $type): string {
+        // Priority 1: per-instance config.
+        if ($instanceid > 0) {
+            $instance = \block_instance_by_id($instanceid);
+            $prompt   = $instance->config->systemprompt ?? '';
+            if (trim($prompt) !== '') {
+                return $prompt;
+            }
+        }
+
+        // Priority 2: global admin setting.
+        $global = get_config('block_ragchat', 'systemprompt_' . $type);
+        if (!empty(trim((string) $global))) {
+            return (string) $global;
+        }
+
+        // Priority 3: lang string fallback.
+        return get_string('systemprompt_' . $type, 'block_ragchat');
+    }
+
+    private static function build_system_prompt(
+        array $chunks,
+        string $collectionid,
+        int $courseid,
+        int $instanceid = 0,
+    ): string {
         $iscatalogue = ($collectionid === 'catalogue_moodle');
+        $type        = $iscatalogue ? 'catalogue' : 'course';
 
         $chunktext = '';
         foreach ($chunks as $i => $c) {
@@ -228,20 +263,15 @@ class send_message extends external_api {
             $chunktext .= "--- [{$title}] ---\n{$content}\n\n";
         }
 
-        if ($iscatalogue) {
-            return get_string('systemprompt_catalogue', 'block_ragchat', ['chunks' => $chunktext]);
-        }
+        $template = self::resolve_prompt_template($instanceid, $type);
 
-        $coursename = '';
-        if ($courseid > 1) {
-            $course = get_course($courseid);
+        if (!$iscatalogue && $courseid > 1) {
+            $course     = get_course($courseid);
             $coursename = format_string($course->fullname);
+            $template   = str_replace('{coursename}', $coursename, $template);
         }
 
-        return get_string('systemprompt_course', 'block_ragchat', [
-            'coursename' => $coursename,
-            'chunks'     => $chunktext,
-        ]);
+        return str_replace('{chunks}', $chunktext, $template);
     }
 
     /**

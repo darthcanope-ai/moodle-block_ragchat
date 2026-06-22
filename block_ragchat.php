@@ -43,6 +43,24 @@ class block_ragchat extends block_base {
     }
 
     /**
+     * Use per-instance title if configured.
+     */
+    public function specialization(): void {
+        if (!empty($this->config->title)) {
+            $this->title = format_string($this->config->title);
+        }
+    }
+
+    /**
+     * Allow per-instance configuration.
+     *
+     * @return bool
+     */
+    public function instance_allow_config(): bool {
+        return true;
+    }
+
+    /**
      * This block can appear on the site homepage and course pages.
      *
      * @return array
@@ -103,6 +121,7 @@ class block_ragchat extends block_base {
         // Pass parameters to JS.
         $PAGE->requires->js_call_amd('block_ragchat/chat', 'init', [[
             'blockid'      => $this->instance->id,
+            'instanceid'   => $this->instance->id,
             'courseid'     => (int) $COURSE->id,
             'collectionid' => $collectionid,
             'userid'       => (int) $USER->id,
