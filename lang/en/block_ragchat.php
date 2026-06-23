@@ -35,7 +35,10 @@ $string['ai_disclaimer']     = 'AI-generated response — always check the sourc
 $string['sources']           = 'Sources';
 $string['no_results']        = 'No relevant courses were found for your question. Try rephrasing it.';
 $string['unknown_source']      = 'Unknown source';
-$string['chat_user_question']  = 'Question:';
+$string['chat_user_question']    = 'Question:';
+$string['history_heading']       = 'Conversation history:';
+$string['history_role_user']     = 'User';
+$string['history_role_assistant']= 'Assistant';
 $string['norag_disclaimer']    = 'No course index available yet — answering without course context.';
 
 $string['systemprompt_norag']  = 'You are a helpful assistant on a learning platform. The course catalogue is not yet indexed. Answer the user\'s question as best you can based on your general knowledge. Be honest if you don\'t know.';

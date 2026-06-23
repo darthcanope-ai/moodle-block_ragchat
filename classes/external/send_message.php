@@ -59,6 +59,15 @@ class send_message extends external_api {
             'collectionid' => new external_value(PARAM_ALPHANUMEXT, 'Albert collection identifier'),
             'courseid'     => new external_value(PARAM_INT, 'Moodle course ID (1 = site)', VALUE_DEFAULT, 1),
             'instanceid'   => new external_value(PARAM_INT, 'Block instance ID (for per-instance prompt)', VALUE_DEFAULT, 0),
+            'history'      => new external_multiple_structure(
+                new external_single_structure([
+                    'role'    => new external_value(PARAM_ALPHA, 'user or assistant'),
+                    'content' => new external_value(PARAM_TEXT, 'Message content'),
+                ]),
+                'Previous conversation turns',
+                VALUE_DEFAULT,
+                [],
+            ),
         ]);
     }
 
@@ -70,7 +79,13 @@ class send_message extends external_api {
      * @param  int    $courseid
      * @return array
      */
-    public static function execute(string $question, string $collectionid, int $courseid = 1, int $instanceid = 0): array {
+    public static function execute(
+        string $question,
+        string $collectionid,
+        int $courseid = 1,
+        int $instanceid = 0,
+        array $history = [],
+    ): array {
         global $USER;
 
         // Validate and clean parameters.
@@ -79,7 +94,11 @@ class send_message extends external_api {
             'collectionid' => $collectionid,
             'courseid'     => $courseid,
             'instanceid'   => $instanceid,
-        ] = self::validate_parameters(self::execute_parameters(), compact('question', 'collectionid', 'courseid', 'instanceid'));
+            'history'      => $history,
+        ] = self::validate_parameters(
+            self::execute_parameters(),
+            compact('question', 'collectionid', 'courseid', 'instanceid', 'history'),
+        );
 
         // Capability check.
         $context = $courseid > 1
@@ -116,7 +135,7 @@ class send_message extends external_api {
                 // Full RAG pipeline.
                 $reranked     = $client->rerank($question, $chunks);
                 $systemprompt = self::build_system_prompt($reranked, $collectionid, $courseid, $instanceid);
-                $answer       = self::generate_answer($systemprompt, $question, $context->id, $USER->id);
+                $answer       = self::generate_answer($systemprompt, $question, $history, $context->id, $USER->id);
                 $sources      = self::format_sources($reranked);
             } elseif ($ragavailable && empty($chunks)) {
                 // Collection exists but no results found.
@@ -125,7 +144,7 @@ class send_message extends external_api {
             } else {
                 // No collection yet — answer without RAG context.
                 $systemprompt = self::resolve_prompt_template($instanceid, 'norag');
-                $answer       = self::generate_answer($systemprompt, $question, $context->id, $USER->id);
+                $answer       = self::generate_answer($systemprompt, $question, $history, $context->id, $USER->id);
                 $sources      = [];
             }
 
@@ -190,15 +209,30 @@ class send_message extends external_api {
     private static function generate_answer(
         string $systemprompt,
         string $question,
+        array $history,
         int $contextid,
         int $userid,
     ): string {
         $manager = \core\di::get(\core_ai\manager::class);
 
+        // Build a transcript of previous turns, capped to avoid token overflows.
+        $historysection = '';
+        $turns = array_slice($history, -10); // Keep last 10 turns max.
+        foreach ($turns as $turn) {
+            $role    = ($turn['role'] === 'assistant') ? get_string('history_role_assistant', 'block_ragchat') : get_string('history_role_user', 'block_ragchat');
+            $historysection .= $role . ': ' . \core_text::substr(trim($turn['content']), 0, 500) . "\n";
+        }
+
+        $fullprompt = $systemprompt;
+        if ($historysection !== '') {
+            $fullprompt .= "\n\n" . get_string('history_heading', 'block_ragchat') . "\n" . $historysection;
+        }
+        $fullprompt .= "\n\n" . get_string('chat_user_question', 'block_ragchat') . ' ' . $question;
+
         $action = new \core_ai\aiactions\generate_text(
             contextid:  $contextid,
             userid:     $userid,
-            prompttext: $systemprompt . "\n\n" . get_string('chat_user_question', 'block_ragchat') . ' ' . $question,
+            prompttext: $fullprompt,
         );
 
         $response = $manager->process_action($action);

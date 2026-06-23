@@ -35,7 +35,10 @@ $string['ai_disclaimer']     = 'Réponse générée par IA — vérifiez toujour
 $string['sources']           = 'Sources';
 $string['no_results']        = 'Aucun cours correspondant à votre question n\'a été trouvé. Essayez de reformuler.';
 $string['unknown_source']      = 'Source inconnue';
-$string['chat_user_question']  = 'Question :';
+$string['chat_user_question']    = 'Question :';
+$string['history_heading']       = 'Historique de la conversation :';
+$string['history_role_user']     = 'Utilisateur';
+$string['history_role_assistant']= 'Assistant';
 $string['norag_disclaimer']    = 'Catalogue non encore indexé — réponse sans contexte de cours.';
 
 $string['systemprompt_norag']  = 'Tu es un assistant sur une plateforme de formation. Le catalogue des cours n\'est pas encore indexé. Réponds à la question de l\'utilisateur du mieux que tu peux avec tes connaissances générales. Sois honnête si tu ne sais pas.';
