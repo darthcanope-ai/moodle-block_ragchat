@@ -106,6 +106,8 @@ class block_ragchat extends block_base {
         $this->content = new stdClass();
         $this->content->footer = '';
 
+        $PAGE->requires->css('/blocks/ragchat/styles.css');
+
         // Require login.
         if (!isloggedin() || isguestuser()) {
             $this->content->text = '';
