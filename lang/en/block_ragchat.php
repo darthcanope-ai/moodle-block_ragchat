@@ -40,6 +40,8 @@ $string['history_heading']       = 'Conversation history:';
 $string['history_role_user']     = 'User';
 $string['history_role_assistant']= 'Assistant';
 $string['norag_disclaimer']    = 'No course index available yet — answering without course context.';
+$string['popout_open']         = 'Expand chat';
+$string['popout_close']        = 'Close expanded chat';
 
 $string['systemprompt_norag']  = 'You are a helpful assistant on a learning platform. The course catalogue is not yet indexed. Answer the user\'s question as best you can based on your general knowledge. Be honest if you don\'t know.';
 

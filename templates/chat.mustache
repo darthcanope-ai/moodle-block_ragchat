@@ -14,6 +14,11 @@
 }}
 <div id="block-ragchat-{{blockid}}" class="ragchat-widget" role="region" aria-label="{{#str}}pluginname, block_ragchat{{/str}}">
 
+    {{! Pop-out toggle button }}
+    <button type="button" class="ragchat-popout-btn" title="{{#str}}popout_open, block_ragchat{{/str}}" aria-label="{{#str}}popout_open, block_ragchat{{/str}}">
+        &#x26F6;
+    </button>
+
     {{! Message history scrollable area }}
     <div class="ragchat-messages" aria-live="polite" aria-relevant="additions">
     </div>

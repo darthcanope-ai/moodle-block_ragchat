@@ -137,6 +137,8 @@ class block_ragchat extends block_base {
                 'ai_disclaimer'  => get_string('ai_disclaimer', 'block_ragchat'),
                 'sources'        => get_string('sources', 'block_ragchat'),
                 'norag_disclaimer' => get_string('norag_disclaimer', 'block_ragchat'),
+                'popout_open'    => get_string('popout_open', 'block_ragchat'),
+                'popout_close'   => get_string('popout_close', 'block_ragchat'),
             ],
         ]]);
 

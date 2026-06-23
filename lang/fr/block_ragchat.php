@@ -40,6 +40,8 @@ $string['history_heading']       = 'Historique de la conversation :';
 $string['history_role_user']     = 'Utilisateur';
 $string['history_role_assistant']= 'Assistant';
 $string['norag_disclaimer']    = 'Catalogue non encore indexé — réponse sans contexte de cours.';
+$string['popout_open']         = 'Agrandir le chat';
+$string['popout_close']        = 'Fermer le chat agrandi';
 
 $string['systemprompt_norag']  = 'Tu es un assistant sur une plateforme de formation. Le catalogue des cours n\'est pas encore indexé. Réponds à la question de l\'utilisateur du mieux que tu peux avec tes connaissances générales. Sois honnête si tu ne sais pas.';
 
