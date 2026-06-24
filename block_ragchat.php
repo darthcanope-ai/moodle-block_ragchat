@@ -106,8 +106,6 @@ class block_ragchat extends block_base {
         $this->content = new stdClass();
         $this->content->footer = '';
 
-        $PAGE->requires->css(new \moodle_url('/blocks/ragchat/styles.css', ['v' => '20260623']));
-
         // Require login.
         if (!isloggedin() || isguestuser()) {
             $this->content->text = '';
