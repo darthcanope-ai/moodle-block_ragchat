@@ -182,24 +182,29 @@
     overflow-y: auto;
 }
 
+/* ---- Toolbar (holds pop-out button) ---- */
+.ragchat-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.25rem;
+}
+
 /* ---- Pop-out toggle button ---- */
 .ragchat-popout-btn {
-    position: absolute;
-    top: 0;
-    right: 0;
     background: transparent;
-    border: none;
-    padding: 0.2rem 0.4rem;
+    border: 1px solid transparent;
+    padding: 0.2rem 0.45rem;
     cursor: pointer;
     color: var(--bs-secondary, #6c757d);
     font-size: 1rem;
     line-height: 1;
     border-radius: 0.25rem;
-    transition: color 0.15s ease, background 0.15s ease;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
 .ragchat-popout-btn:hover {
     color: var(--bs-primary, #0d6efd);
+    border-color: var(--bs-border-color, #dee2e6);
     background: var(--bs-light, #f4f4f4);
 }
 
