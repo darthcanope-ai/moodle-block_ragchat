@@ -37,6 +37,7 @@ $string['no_results']        = 'No relevant courses were found for your question
 $string['unknown_source']      = 'Unknown source';
 $string['chat_user_question']    = 'Question:';
 $string['history_heading']       = 'Conversation history:';
+$string['answer_instruction']    = 'Answer the question above using ONLY the information in the <context> section. If the answer is not found there, say so clearly. Do not invent or assume information not present in the context.';
 $string['history_role_user']     = 'User';
 $string['history_role_assistant']= 'Assistant';
 $string['norag_disclaimer']    = 'No course index available yet — answering without course context.';

@@ -122,19 +122,23 @@ class send_message extends external_api {
         // fall back to a direct LLM answer without retrieved context.
         $ragavailable = true;
         $chunks       = [];
+        $debuginfo    = '';
 
         try {
-            $chunks = $client->search($question, $collectionid);
+            $chunks    = $client->search($question, $collectionid);
+            $debuginfo = 'search OK, chunks=' . count($chunks);
         } catch (\RuntimeException $e) {
-            // Collection not found = cron has not run yet.
             $ragavailable = false;
+            $debuginfo    = 'search FAILED: ' . $e->getMessage();
         }
 
         try {
             if ($ragavailable && !empty($chunks)) {
                 // Full RAG pipeline.
                 $reranked     = $client->rerank($question, $chunks);
+                $debuginfo   .= ' | rerank OK, kept=' . count($reranked);
                 $systemprompt = self::build_system_prompt($reranked, $collectionid, $courseid, $instanceid);
+                $debuginfo   .= ' | prompt_len=' . strlen($systemprompt);
                 $answer       = self::generate_answer($systemprompt, $question, $history, $context->id, $USER->id);
                 $sources      = self::format_sources($reranked);
             } elseif ($ragavailable && empty($chunks)) {
@@ -223,11 +227,15 @@ class send_message extends external_api {
             $historysection .= $role . ': ' . \core_text::substr(trim($turn['content']), 0, 500) . "\n";
         }
 
-        $fullprompt = $systemprompt;
+        // The Moodle generate_text action sends everything as a single user message.
+        // Use explicit XML-style tags so modern LLMs treat instructions and context
+        // with higher priority than the question itself.
+        $fullprompt  = "<instructions>\n" . $systemprompt . "\n</instructions>\n\n";
         if ($historysection !== '') {
-            $fullprompt .= "\n\n" . get_string('history_heading', 'block_ragchat') . "\n" . $historysection;
+            $fullprompt .= "<conversation_history>\n" . $historysection . "</conversation_history>\n\n";
         }
-        $fullprompt .= "\n\n" . get_string('chat_user_question', 'block_ragchat') . ' ' . $question;
+        $fullprompt .= "<question>" . $question . "</question>\n\n";
+        $fullprompt .= get_string('answer_instruction', 'block_ragchat');
 
         $action = new \core_ai\aiactions\generate_text(
             contextid:  $contextid,
@@ -290,12 +298,16 @@ class send_message extends external_api {
         $iscatalogue = ($collectionid === 'catalogue_moodle');
         $type        = $iscatalogue ? 'catalogue' : 'course';
 
-        $chunktext = '';
+        // Build context section with XML tags so the LLM clearly identifies it.
+        $chunktext = "<context>\n";
         foreach ($chunks as $i => $c) {
             $title   = $c->chunk->metadata->title ?? ('Document ' . ($i + 1));
             $content = $c->chunk->content ?? '';
-            $chunktext .= "--- [{$title}] ---\n{$content}\n\n";
+            $chunktext .= "<document id=\"" . ($i + 1) . "\" title=\"" . htmlspecialchars($title, ENT_XML1) . "\">\n";
+            $chunktext .= trim($content) . "\n";
+            $chunktext .= "</document>\n";
         }
+        $chunktext .= "</context>";
 
         $template = self::resolve_prompt_template($instanceid, $type);
 

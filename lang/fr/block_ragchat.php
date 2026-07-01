@@ -37,6 +37,7 @@ $string['no_results']        = 'Aucun cours correspondant à votre question n\'a
 $string['unknown_source']      = 'Source inconnue';
 $string['chat_user_question']    = 'Question :';
 $string['history_heading']       = 'Historique de la conversation :';
+$string['answer_instruction']    = 'Réponds à la question ci-dessus en utilisant UNIQUEMENT les informations contenues dans la section <context>. Si la réponse ne s\'y trouve pas, dis-le clairement. N\'invente pas et n\'suppose pas d\'informations absentes du contexte.';
 $string['history_role_user']     = 'Utilisateur';
 $string['history_role_assistant']= 'Assistant';
 $string['norag_disclaimer']    = 'Catalogue non encore indexé — réponse sans contexte de cours.';
