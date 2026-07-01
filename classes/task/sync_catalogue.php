@@ -76,7 +76,7 @@ class sync_catalogue extends \core\task\scheduled_task {
         try {
             $client->reset_collection(self::COLLECTION);
             mtrace('block_ragchat: Collection reset.');
-        } catch (\moodle_exception $e) {
+        } catch (\Throwable $e) {
             // If the collection has no documents yet, reset may return 404 — acceptable.
             mtrace('block_ragchat: Reset warning (may be empty): ' . $e->getMessage());
         }
