@@ -72,6 +72,8 @@ Documents disponibles :
 {chunks}";
 
 // Paramètres — prompts par défaut.
+$string['settings_debug_prompt']      = 'Afficher le prompt dans le chat (debug)';
+$string['settings_debug_prompt_desc'] = 'Quand activé, le prompt complet envoyé au LLM s\'affiche après chaque réponse. Visible uniquement par les administrateurs. Désactiver en production.';
 $string['settings_prompts_heading']              = 'Prompts système par défaut';
 $string['settings_prompts_heading_desc']         = 'Ces prompts s\'appliquent à tout le site sauf s\'ils sont surchargés sur une instance du bloc. Laisser vide pour utiliser le prompt intégré.';
 $string['settings_systemprompt_catalogue']       = 'Prompt chatbot catalogue';

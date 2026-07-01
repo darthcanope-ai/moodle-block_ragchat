@@ -72,6 +72,8 @@ Available documents:
 {chunks}";
 
 // Settings — system prompt defaults.
+$string['settings_debug_prompt']      = 'Show prompt in chat (debug)';
+$string['settings_debug_prompt_desc'] = 'When enabled, the full prompt sent to the LLM is shown after each answer. Visible to site admins only. Disable in production.';
 $string['settings_prompts_heading']              = 'Default system prompts';
 $string['settings_prompts_heading_desc']         = 'These prompts are used site-wide unless overridden on individual block instances. Leave empty to use the built-in lang string.';
 $string['settings_systemprompt_catalogue']       = 'Catalogue chatbot prompt';

@@ -122,23 +122,19 @@ class send_message extends external_api {
         // fall back to a direct LLM answer without retrieved context.
         $ragavailable = true;
         $chunks       = [];
-        $debuginfo    = '';
+        $systemprompt = '';
 
         try {
-            $chunks    = $client->search($question, $collectionid);
-            $debuginfo = 'search OK, chunks=' . count($chunks);
+            $chunks = $client->search($question, $collectionid);
         } catch (\RuntimeException $e) {
             $ragavailable = false;
-            $debuginfo    = 'search FAILED: ' . $e->getMessage();
         }
 
         try {
             if ($ragavailable && !empty($chunks)) {
                 // Full RAG pipeline.
                 $reranked     = $client->rerank($question, $chunks);
-                $debuginfo   .= ' | rerank OK, kept=' . count($reranked);
                 $systemprompt = self::build_system_prompt($reranked, $collectionid, $courseid, $instanceid);
-                $debuginfo   .= ' | prompt_len=' . strlen($systemprompt);
                 $answer       = self::generate_answer($systemprompt, $question, $history, $context->id, $USER->id);
                 $sources      = self::format_sources($reranked);
             } elseif ($ragavailable && empty($chunks)) {
@@ -154,12 +150,17 @@ class send_message extends external_api {
 
             self::log_interaction($USER->id, $courseid, $collectionid, $question, $answer);
 
+            $debugprompt = '';
+            if (get_config('block_ragchat', 'debug_prompt') && is_siteadmin()) {
+                $debugprompt = $systemprompt ?? '';
+            }
             return [
-                'success' => true,
-                'answer'  => $answer,
-                'sources' => $sources,
-                'error'   => '',
-                'norag'   => !$ragavailable,
+                'success'      => true,
+                'answer'       => $answer,
+                'sources'      => $sources,
+                'error'        => '',
+                'norag'        => !$ragavailable,
+                'debug_prompt' => $debugprompt,
             ];
 
         } catch (\Throwable $e) {
@@ -188,7 +189,8 @@ class send_message extends external_api {
                 [],
             ),
             'error' => new external_value(PARAM_TEXT, 'Error message when success=false', VALUE_DEFAULT, ''),
-            'norag' => new external_value(PARAM_BOOL, 'True when answered without RAG context (collection not yet indexed)', VALUE_DEFAULT, false),
+            'norag'        => new external_value(PARAM_BOOL, 'True when answered without RAG context (collection not yet indexed)', VALUE_DEFAULT, false),
+            'debug_prompt' => new external_value(PARAM_RAW, 'Full prompt sent to LLM (admins only, when debug enabled)', VALUE_DEFAULT, ''),
         ]);
     }
 

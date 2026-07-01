@@ -111,6 +111,14 @@ if ($ADMIN->fulltree) {
         '5',
     ));
 
+    // Debug mode — show prompt in chat response (admins only).
+    $settings->add(new admin_setting_configcheckbox(
+        'block_ragchat/debug_prompt',
+        get_string('settings_debug_prompt', 'block_ragchat'),
+        get_string('settings_debug_prompt_desc', 'block_ragchat'),
+        0,
+    ));
+
     // Last catalogue sync (read-only info).
     $lastsync = get_config('block_ragchat', 'catalogue_last_sync');
     $lastsyncstr = $lastsync
