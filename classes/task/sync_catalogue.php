@@ -69,8 +69,8 @@ class sync_catalogue extends \core\task\scheduled_task {
 
         mtrace('block_ragchat: Starting catalogue sync → ' . self::COLLECTION);
 
-        // 1. Ensure collection exists.
-        $this->ensure_collection($client);
+        // 1. Ensure collection exists and get its integer ID.
+        $collectionid = $this->ensure_collection($client);
 
         // 2. Reset collection (delete all existing documents).
         try {
@@ -97,15 +97,14 @@ class sync_catalogue extends \core\task\scheduled_task {
 
         foreach ($courses as $course) {
             try {
-                $fiche   = $this->build_course_fiche($course);
-                $fileid  = $client->upload_file("course_{$course->id}.txt", $fiche);
-                $client->index_document($fileid, self::COLLECTION);
+                $fiche = $this->build_course_fiche($course);
+                $client->upload_document("course_{$course->id}.txt", $fiche, $collectionid);
                 $count++;
 
                 if ($count % 10 === 0) {
                     mtrace("block_ragchat: {$count}/{$total} indexed…");
                 }
-            } catch (\moodle_exception $e) {
+            } catch (\Throwable $e) {
                 $errors++;
                 mtrace("block_ragchat: Error on course {$course->id} ({$course->shortname}): " . $e->getMessage());
             }
@@ -125,16 +124,20 @@ class sync_catalogue extends \core\task\scheduled_task {
      * Ensure the Albert collection exists, creating it if necessary.
      *
      * @param  albert_client $client
-     * @return void
+     * @return int  Integer collection ID.
      */
-    private function ensure_collection(albert_client $client): void {
+    private function ensure_collection(albert_client $client): int {
         $collections = $client->list_collections();
-        $names = array_map(fn($c) => $c->name ?? '', $collections);
 
-        if (!in_array(self::COLLECTION, $names, true)) {
-            $client->create_collection(self::COLLECTION);
-            mtrace('block_ragchat: Collection created: ' . self::COLLECTION);
+        foreach ($collections as $col) {
+            if (($col->name ?? '') === self::COLLECTION) {
+                return (int) $col->id;
+            }
         }
+
+        $created = $client->create_collection(self::COLLECTION);
+        mtrace('block_ragchat: Collection created: ' . self::COLLECTION);
+        return (int) $created->id;
     }
 
     /**

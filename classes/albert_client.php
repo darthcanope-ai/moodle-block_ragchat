@@ -199,26 +199,29 @@ class albert_client {
     }
 
     /**
-     * Upload a file via multipart/form-data.
+     * Upload text content as a document directly into a collection.
      *
-     * @param  string $filename
-     * @param  string $content
-     * @param  string $purpose
-     * @return string Albert file ID.
+     * POST /v1/documents  (multipart: collection_id + file)
+     * Returns the created document ID.
+     *
+     * @param  string $filename     Filename sent as the multipart part name.
+     * @param  string $content      Plain-text content to index.
+     * @param  int    $collectionid Albert collection integer ID.
+     * @return int    Albert document ID.
      */
-    public function upload_file(string $filename, string $content, string $purpose = 'assistants'): string {
+    public function upload_document(string $filename, string $content, int $collectionid): int {
         $client  = \core\di::get(http_client::class);
         $request = new Request(
             'POST',
-            $this->endpoint . '/v1/files',
+            $this->endpoint . '/v1/documents',
             ['Authorization' => 'Bearer ' . $this->apikey],
         );
 
         try {
             $response = $client->send($request, [
                 RequestOptions::MULTIPART => [
-                    ['name' => 'purpose',  'contents' => $purpose],
-                    ['name' => 'file',     'contents' => $content, 'filename' => $filename],
+                    ['name' => 'collection_id', 'contents' => (string) $collectionid],
+                    ['name' => 'file',          'contents' => $content, 'filename' => $filename],
                 ],
                 RequestOptions::HTTP_ERRORS => false,
             ]);
@@ -228,21 +231,7 @@ class albert_client {
 
         $this->assert_success($response);
         $body = json_decode($response->getBody()->getContents());
-        return $body->id ?? '';
-    }
-
-    /**
-     * Index an uploaded file into a collection.
-     *
-     * @param  string $fileid
-     * @param  string $collectionid
-     * @return \stdClass
-     */
-    public function index_document(string $fileid, string $collectionid): \stdClass {
-        return $this->post('/v1/documents', [
-            'file_id'    => $fileid,
-            'collection' => $collectionid,
-        ]);
+        return (int) ($body->id ?? 0);
     }
 
     // -------------------------------------------------------------------------
