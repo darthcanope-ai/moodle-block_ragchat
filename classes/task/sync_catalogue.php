@@ -158,13 +158,13 @@ class sync_catalogue extends \core\task\scheduled_task {
             array_keys(get_roles_with_capability('moodle/course:manageactivities', CAP_ALLOW, $context)),
             $context,
             false,
-            'u.firstname, u.lastname',
-            null,
+            'ra.id, u.id, u.firstname, u.lastname, u.firstnamephonetic, u.lastnamephonetic, u.middlename, u.alternatename',
+            'u.lastname ASC',
             false,
             '',
             '',
             '',
-            5, // Max 5 teachers.
+            5,
         );
         $teachernames = implode(', ', array_map(
             fn($t) => fullname($t),
